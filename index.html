@@ -218,11 +218,18 @@ async function connect(){
     setConnected(true, device.name || 'ESP32-School-Gate');
   }catch(err){
     setBusy(false, '');
+    device = null; rxChar = null;
+    connDot.className = 'dot';
+    connectBtn.textContent = 'Connect to gate';
+    gateCard.style.opacity = '.4';
+    gateCard.style.pointerEvents = 'none';
     if (err && err.name !== 'NotFoundError'){
       connLabel.textContent = 'Connection failed';
       connDevice.textContent = (err && err.message) ? err.message : 'Try again';
+    } else {
+      connLabel.textContent = 'Not connected';
+      connDevice.textContent = 'Tap connect to pair over Bluetooth';
     }
-    setConnected(false, '');
   }
 }
 
