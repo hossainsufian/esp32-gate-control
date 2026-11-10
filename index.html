@@ -8,12 +8,13 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-/* Layout: single-column control panel -- connection card, then a big
-   gate-state readout, then two large tap targets for Open / Close. */
+/* Layout: single-column control panel -- connection card (with a live
+   step log), then a big gate-state readout, then two large tap targets
+   for Open / Close. */
 :root{
   --bg:#0b1220; --surface:#131b2e; --surface-2:#1b2740; --border:#263352;
   --fg:#e8edf7; --muted:#8a93ac; --accent:#3ea6ff; --accent-dim:#1d4d78;
-  --success:#35d07f; --success-dim:#163826; --warn:#f5a623;
+  --success:#35d07f; --success-dim:#163826; --warn:#f5a623; --danger:#ff6b6b;
   --font-display:'Space Grotesk',sans-serif; --font-body:'Inter',sans-serif; --font-mono:'JetBrains Mono',monospace;
   color-scheme: dark;
 }
@@ -21,20 +22,20 @@
   :root:not([data-theme="dark"]){
     --bg:#f1f4fa; --surface:#ffffff; --surface-2:#eef1f8; --border:#dde3f0;
     --fg:#141a2b; --muted:#5b6478; --accent:#1d6fe0; --accent-dim:#dbeafe;
-    --success:#1f9d5c; --success-dim:#dcf5e7; --warn:#b97300;
+    --success:#1f9d5c; --success-dim:#dcf5e7; --warn:#b97300; --danger:#c0392b;
     color-scheme: light;
   }
 }
 :root[data-theme="light"]{
   --bg:#f1f4fa; --surface:#ffffff; --surface-2:#eef1f8; --border:#dde3f0;
   --fg:#141a2b; --muted:#5b6478; --accent:#1d6fe0; --accent-dim:#dbeafe;
-  --success:#1f9d5c; --success-dim:#dcf5e7; --warn:#b97300;
+  --success:#1f9d5c; --success-dim:#dcf5e7; --warn:#b97300; --danger:#c0392b;
   color-scheme: light;
 }
 :root[data-theme="dark"]{
   --bg:#0b1220; --surface:#131b2e; --surface-2:#1b2740; --border:#263352;
   --fg:#e8edf7; --muted:#8a93ac; --accent:#3ea6ff; --accent-dim:#1d4d78;
-  --success:#35d07f; --success-dim:#163826; --warn:#f5a623;
+  --success:#35d07f; --success-dim:#163826; --warn:#f5a623; --danger:#ff6b6b;
   color-scheme: dark;
 }
 *{ box-sizing:border-box; }
@@ -57,9 +58,10 @@ h1{ font-family:var(--font-display); font-weight:700; font-size:28px; margin:0; 
 .dot{ width:10px; height:10px; border-radius:50%; background:var(--muted); flex-shrink:0; transition:background .2s; }
 .dot.on{ background:var(--success); box-shadow:0 0 0 4px var(--success-dim); }
 .dot.busy{ background:var(--warn); box-shadow:0 0 0 4px color-mix(in srgb, var(--warn) 25%, transparent); animation:pulse 1s ease-in-out infinite; }
+.dot.err{ background:var(--danger); }
 @keyframes pulse{ 50%{ opacity:.4; } }
-.conn-text{ font-size:14px; font-weight:500; }
-.conn-text .device{ color:var(--muted); font-family:var(--font-mono); font-size:12px; display:block; margin-top:2px; }
+.conn-text{ font-size:14px; font-weight:500; min-width:0; }
+.conn-text .device{ color:var(--muted); font-family:var(--font-mono); font-size:12px; display:block; margin-top:2px; word-break:break-word; }
 
 .btn{
   font-family:var(--font-body); font-weight:600; font-size:15px; border:none; border-radius:12px;
@@ -69,6 +71,14 @@ h1{ font-family:var(--font-display); font-weight:700; font-size:28px; margin:0; 
 .btn:active{ transform:scale(0.97); }
 .btn:disabled{ opacity:.4; cursor:not-allowed; transform:none; }
 .btn-primary{ background:var(--accent); color:#06121f; width:100%; margin-top:14px; font-size:16px; padding:15px; }
+
+.log{
+  margin-top:12px; background:var(--surface-2); border:1px solid var(--border); border-radius:10px;
+  padding:10px 12px; font-family:var(--font-mono); font-size:11px; line-height:1.6; color:var(--muted);
+  max-height:110px; overflow-y:auto;
+}
+.log div.err{ color:var(--danger); }
+.log div.ok{ color:var(--success); }
 
 .gate-readout{ display:flex; flex-direction:column; align-items:center; gap:10px; padding-block:22px; }
 .gate-state{ font-family:var(--font-display); font-weight:700; font-size:34px; letter-spacing:0.02em; transition:color .2s; }
@@ -96,7 +106,7 @@ footer{ margin-top:auto; padding-top:24px; color:var(--muted); font-size:11px; t
 <div class="wrap">
   <header>
     <h1>Gate Control</h1>
-    <div class="sub">Bluetooth Low Energy &middot; ESP32-School-Gate</div>
+    <div class="sub">Bluetooth Low Energy &middot; Gate by Sufian</div>
   </header>
 
   <div class="card" id="connCard">
@@ -112,6 +122,7 @@ footer{ margin-top:auto; padding-top:24px; color:var(--muted); font-size:11px; t
       <b>Web Bluetooth isn't available here.</b>
       <span>This control page needs <b>Chrome on Android</b>. It won't work in Safari, iPhone browsers, or most in-app browsers.</span>
     </div>
+    <div class="log" id="log"></div>
   </div>
 
   <div class="card" id="gateCard" style="opacity:.4; pointer-events:none;">
@@ -139,7 +150,7 @@ footer{ margin-top:auto; padding-top:24px; color:var(--muted); font-size:11px; t
     </div>
   </div>
 
-  <div class="hint">Keep this page open while near the gate. If the connection drops, tap <b>Connect to gate</b> again.</div>
+  <div class="hint">If the connection drops or fails, check the log above, then tap <b>Connect to gate</b> again. First time connecting after a firmware update? Remove <b>Gate by Sufian</b> from your phone's Bluetooth settings first.</div>
 
   <footer>SERVICE 6e400001&hyphen;&hellip;&hyphen;cca9e</footer>
 </div>
@@ -159,8 +170,18 @@ const barrier = document.getElementById('barrier');
 const openBtn = document.getElementById('openBtn');
 const closeBtn = document.getElementById('closeBtn');
 const unsupportedBox = document.getElementById('unsupportedBox');
+const logBox = document.getElementById('log');
 
 let device = null, rxChar = null;
+
+function log(text, kind){
+  const line = document.createElement('div');
+  if (kind) line.className = kind;
+  const t = new Date().toLocaleTimeString([], {hour12:false});
+  line.textContent = '[' + t + '] ' + text;
+  logBox.appendChild(line);
+  logBox.scrollTop = logBox.scrollHeight;
+}
 
 function setGateVisual(isOpen){
   gateState.textContent = isOpen ? 'OPEN' : 'SHUT';
@@ -171,64 +192,93 @@ function setGateVisual(isOpen){
   closeBtn.disabled = !isOpen;
 }
 
-function setConnected(isConnected, deviceName){
-  connDot.className = 'dot' + (isConnected ? ' on' : '');
-  connLabel.textContent = isConnected ? 'Connected' : 'Not connected';
-  connDevice.textContent = isConnected ? deviceName : 'Tap connect to pair over Bluetooth';
-  connectBtn.textContent = isConnected ? 'Disconnect' : 'Connect to gate';
-  gateCard.style.opacity = isConnected ? '1' : '.4';
-  gateCard.style.pointerEvents = isConnected ? 'auto' : 'none';
+function resetToDisconnected(){
+  connDot.className = 'dot';
+  connLabel.textContent = 'Not connected';
+  connDevice.textContent = 'Tap connect to pair over Bluetooth';
+  connectBtn.textContent = 'Connect to gate';
+  connectBtn.disabled = false;
+  gateCard.style.opacity = '.4';
+  gateCard.style.pointerEvents = 'none';
+  device = null; rxChar = null;
 }
 
-function setBusy(isBusy, label){
-  connDot.className = 'dot' + (isBusy ? ' busy' : '');
-  if (isBusy) connLabel.textContent = label;
-  connectBtn.disabled = isBusy;
+function setConnected(deviceName){
+  connDot.className = 'dot on';
+  connLabel.textContent = 'Connected';
+  connDevice.textContent = deviceName;
+  connectBtn.textContent = 'Disconnect';
+  connectBtn.disabled = false;
+  gateCard.style.opacity = '1';
+  gateCard.style.pointerEvents = 'auto';
+}
+
+function setBusy(label){
+  connDot.className = 'dot busy';
+  connLabel.textContent = label;
+  connectBtn.disabled = true;
+}
+
+function setError(label, detail){
+  connDot.className = 'dot err';
+  connLabel.textContent = label;
+  connDevice.textContent = detail || '';
+  connectBtn.textContent = 'Connect to gate';
+  connectBtn.disabled = false;
+  gateCard.style.opacity = '.4';
+  gateCard.style.pointerEvents = 'none';
 }
 
 function handleNotify(event){
   const value = new TextDecoder().decode(event.target.value);
+  log('notify: ' + value);
   if (value.indexOf('open') === 0) setGateVisual(true);
   else if (value.indexOf('closed') === 0) setGateVisual(false);
 }
 
 function onDisconnected(){
-  setConnected(false, '');
-  device = null; rxChar = null;
+  log('Bluetooth link dropped.', 'err');
+  resetToDisconnected();
 }
 
 async function connect(){
   try{
-    setBusy(true, 'Choose device…');
+    setBusy('Choose device…');
+    log('Opening device picker (filtering by service UUID)…');
     device = await navigator.bluetooth.requestDevice({
       filters: [{ services: [SERVICE_UUID] }],
       optionalServices: [SERVICE_UUID]
     });
+    log('Picked: ' + (device.name || '(unnamed)'));
     device.addEventListener('gattserverdisconnected', onDisconnected);
 
-    setBusy(true, 'Connecting…');
+    setBusy('Connecting to GATT server…');
     const server = await device.gatt.connect();
+    log('GATT connected.', 'ok');
+
+    setBusy('Looking up service…');
     const service = await server.getPrimaryService(SERVICE_UUID);
+    log('Service found.', 'ok');
+
+    setBusy('Looking up characteristics…');
     rxChar = await service.getCharacteristic(RX_UUID);
     const txChar = await service.getCharacteristic(TX_UUID);
+    log('Characteristics found.', 'ok');
+
+    setBusy('Starting notifications…');
     await txChar.startNotifications();
     txChar.addEventListener('characteristicvaluechanged', handleNotify);
+    log('Ready.', 'ok');
 
-    setBusy(false, '');
-    setConnected(true, device.name || 'ESP32-School-Gate');
+    setConnected(device.name || 'Gate by Sufian');
   }catch(err){
-    setBusy(false, '');
-    device = null; rxChar = null;
-    connDot.className = 'dot';
-    connectBtn.textContent = 'Connect to gate';
-    gateCard.style.opacity = '.4';
-    gateCard.style.pointerEvents = 'none';
-    if (err && err.name !== 'NotFoundError'){
-      connLabel.textContent = 'Connection failed';
-      connDevice.textContent = (err && err.message) ? err.message : 'Try again';
+    const name = (err && err.name) || 'Error';
+    const msg = (err && err.message) || String(err);
+    log(name + ': ' + msg, 'err');
+    if (err && err.name === 'NotFoundError'){
+      resetToDisconnected();   // user just closed the device picker, not a real error
     } else {
-      connLabel.textContent = 'Not connected';
-      connDevice.textContent = 'Tap connect to pair over Bluetooth';
+      setError('Connection failed', name + ': ' + msg);
     }
   }
 }
@@ -237,9 +287,11 @@ async function send(cmd){
   if (!rxChar) return;
   try{
     await rxChar.writeValue(new TextEncoder().encode(cmd));
+    log('sent: ' + cmd);
     setGateVisual(cmd === 'o');
   }catch(err){
-    connLabel.textContent = 'Command failed, reconnect';
+    log('write failed: ' + ((err && err.message) || err), 'err');
+    setError('Command failed', 'Reconnect and try again');
   }
 }
 
@@ -256,6 +308,7 @@ closeBtn.addEventListener('click', () => send('c'));
 if (!navigator.bluetooth){
   connectBtn.hidden = true;
   unsupportedBox.hidden = false;
+  log('navigator.bluetooth is not available in this browser.', 'err');
 }
 </script>
 </body>
