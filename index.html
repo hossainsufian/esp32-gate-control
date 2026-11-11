@@ -91,6 +91,12 @@ h1{ font-family:var(--font-display); font-weight:700; font-size:28px; margin:0; 
 .ctrl-btn{ background:var(--surface-2); color:var(--fg); border:1px solid var(--border); flex-direction:column; padding:18px 12px; gap:6px; }
 .ctrl-btn svg{ width:26px; height:26px; }
 .ctrl-btn.active-open{ background:var(--success-dim); border-color:var(--success); color:var(--success); }
+.dance-row{ margin-top:12px; padding-top:14px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:10px; }
+.dance-label{ display:flex; justify-content:space-between; font-size:13px; color:var(--muted); }
+.dance-label span:last-child{ color:var(--accent); font-weight:600; }
+.dance-row input[type="range"]{ width:100%; accent-color:var(--accent); }
+.dance-btn{ width:100%; flex-direction:row; justify-content:center; }
+.dance-btn svg{ width:20px; height:20px; }
 
 .hint{ color:var(--muted); font-size:12px; line-height:1.5; text-align:center; }
 .hint b{ color:var(--fg); font-weight:600; }
@@ -148,6 +154,18 @@ footer{ margin-top:auto; padding-top:24px; color:var(--muted); font-size:11px; t
         Close
       </button>
     </div>
+
+    <div class="dance-row">
+      <div class="dance-label">
+        <span>Dance range</span>
+        <span id="danceAngleVal">60&deg;</span>
+      </div>
+      <input type="range" id="danceAngleSlider" min="5" max="180" step="5" value="60">
+      <button class="btn ctrl-btn dance-btn" id="danceBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M4.2 7.8l2.9 2.9M16.9 13.3l2.9 2.9M3 12h4M17 12h4M4.2 16.2l2.9-2.9M16.9 10.7l2.9-2.9"/></svg>
+        Dance
+      </button>
+    </div>
   </div>
 
   <div class="hint">If the connection drops or fails, check the log above, then tap <b>Connect to gate</b> again. First time connecting after a firmware update? Remove <b>Gate by Sufian</b> from your phone's Bluetooth settings first.</div>
@@ -169,6 +187,9 @@ const gateState = document.getElementById('gateState');
 const barrier = document.getElementById('barrier');
 const openBtn = document.getElementById('openBtn');
 const closeBtn = document.getElementById('closeBtn');
+const danceBtn = document.getElementById('danceBtn');
+const danceAngleSlider = document.getElementById('danceAngleSlider');
+const danceAngleVal = document.getElementById('danceAngleVal');
 const unsupportedBox = document.getElementById('unsupportedBox');
 const logBox = document.getElementById('log');
 
@@ -288,7 +309,14 @@ async function send(cmd){
   try{
     await rxChar.writeValue(new TextEncoder().encode(cmd));
     log('sent: ' + cmd);
-    setGateVisual(cmd === 'o');
+    if (cmd[0] === 'd'){
+      gateState.textContent = 'DANCING';
+      gateState.className = 'gate-state open';
+      // the gate will flicker OPEN/SHUT with each dance move as the ESP32
+      // notifies its real position, then settle on SHUT when the dance ends
+    } else {
+      setGateVisual(cmd === 'o');
+    }
   }catch(err){
     log('write failed: ' + ((err && err.message) || err), 'err');
     setError('Command failed', 'Reconnect and try again');
@@ -304,6 +332,10 @@ connectBtn.addEventListener('click', () => {
 });
 openBtn.addEventListener('click', () => send('o'));
 closeBtn.addEventListener('click', () => send('c'));
+danceAngleSlider.addEventListener('input', () => {
+  danceAngleVal.textContent = danceAngleSlider.value + '°';
+});
+danceBtn.addEventListener('click', () => send('d' + danceAngleSlider.value));
 
 if (!navigator.bluetooth){
   connectBtn.hidden = true;
