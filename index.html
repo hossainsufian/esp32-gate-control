@@ -144,6 +144,14 @@ footer{ margin-top:auto; padding-top:24px; color:var(--muted); font-size:11px; t
       <div class="gate-label">Current gate status</div>
     </div>
 
+    <div class="dance-row">
+      <div class="dance-label">
+        <span>Degree (used by Open and Dance)</span>
+        <span id="danceAngleVal">60&deg;</span>
+      </div>
+      <input type="range" id="danceAngleSlider" min="5" max="180" step="5" value="60">
+    </div>
+
     <div class="controls">
       <button class="btn ctrl-btn" id="openBtn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
@@ -156,11 +164,6 @@ footer{ margin-top:auto; padding-top:24px; color:var(--muted); font-size:11px; t
     </div>
 
     <div class="dance-row">
-      <div class="dance-label">
-        <span>Dance range</span>
-        <span id="danceAngleVal">60&deg;</span>
-      </div>
-      <input type="range" id="danceAngleSlider" min="5" max="180" step="5" value="60">
       <button class="btn ctrl-btn dance-btn" id="danceBtn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M4.2 7.8l2.9 2.9M16.9 13.3l2.9 2.9M3 12h4M17 12h4M4.2 16.2l2.9-2.9M16.9 10.7l2.9-2.9"/></svg>
         Dance
@@ -315,7 +318,7 @@ async function send(cmd){
       // the gate will flicker OPEN/SHUT with each dance move as the ESP32
       // notifies its real position, then settle on SHUT when the dance ends
     } else {
-      setGateVisual(cmd === 'o');
+      setGateVisual(cmd[0] === 'o');
     }
   }catch(err){
     log('write failed: ' + ((err && err.message) || err), 'err');
@@ -330,7 +333,7 @@ connectBtn.addEventListener('click', () => {
     connect();
   }
 });
-openBtn.addEventListener('click', () => send('o'));
+openBtn.addEventListener('click', () => send('o' + danceAngleSlider.value));
 closeBtn.addEventListener('click', () => send('c'));
 danceAngleSlider.addEventListener('input', () => {
   danceAngleVal.textContent = danceAngleSlider.value + '°';
