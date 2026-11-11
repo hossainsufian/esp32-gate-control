@@ -119,8 +119,8 @@ footer{ margin-top:auto; padding-top:24px; color:var(--muted); font-size:11px; t
     </div>
     <button class="btn btn-primary" id="connectBtn">Connect to gate</button>
     <div id="unsupportedBox" hidden class="unsupported">
-      <b>Web Bluetooth isn't available here.</b>
-      <span>This control page needs <b>Chrome on Android</b>. It won't work in Safari, iPhone browsers, or most in-app browsers.</span>
+      <b>Web Bluetooth isn't available in this browser.</b>
+      <span id="unsupportedDetail">This page needs a Chromium-based browser &mdash; <b>Chrome, Edge, Samsung Internet, Opera,</b> or <b>Brave</b> &mdash; on Android. It won't work in Safari, Firefox, or any iPhone browser (Apple and Mozilla don't support Web Bluetooth).</span>
     </div>
     <div class="log" id="log"></div>
   </div>
@@ -308,7 +308,23 @@ closeBtn.addEventListener('click', () => send('c'));
 if (!navigator.bluetooth){
   connectBtn.hidden = true;
   unsupportedBox.hidden = false;
-  log('navigator.bluetooth is not available in this browser.', 'err');
+
+  const ua = navigator.userAgent;
+  const detail = document.getElementById('unsupportedDetail');
+  let name = 'This browser';
+  if (/iPhone|iPad|iPod/i.test(ua)) name = 'iOS browsers (Safari, Chrome, Firefox on iPhone/iPad all use Apple’s engine)';
+  else if (/FxiOS/i.test(ua)) name = 'Firefox on iOS';
+  else if (/Firefox/i.test(ua)) name = 'Firefox';
+  else if (/Safari/i.test(ua) && !/Chrome|Chromium|Edg|OPR|SamsungBrowser/i.test(ua)) name = 'Safari';
+  else name = 'This browser';
+
+  if (/iPhone|iPad|iPod/i.test(ua)){
+    detail.innerHTML = '<b>' + name + "</b> can't use Web Bluetooth &mdash; it's an Apple platform restriction, not something this page can fix. Open this page on an <b>Android</b> phone in Chrome, Edge, Samsung Internet, Opera, or Brave instead.";
+  } else {
+    detail.innerHTML = '<b>' + name + '</b> doesn’t support Web Bluetooth. Open this page in a Chromium-based browser instead &mdash; <b>Chrome, Edge, Samsung Internet, Opera,</b> or <b>Brave</b> &mdash; on Android.';
+  }
+
+  log('navigator.bluetooth is not available in this browser (' + name + ').', 'err');
 }
 </script>
 </body>
